@@ -39,27 +39,27 @@ let HandledFileExtensions = ["jpg", "jpeg", "png", "gif", "bmp", "heif", "heic",
 
 @NSApplicationMain
 class AppDelegate: NSObject, NSApplicationDelegate {
-    
-    
+
+
     // Right click open with
     private func application(_ sender: NSApplication, openFiles filenames: String) -> Bool {
         set_new_url(in_url: URL(fileURLWithPath: filenames).absoluteString)
         send_NC(text: "Opened via Open With")
         return true
     }
-    
+
     // Drag and drop onto icon
     func application(_ sender: NSApplication, openFile filename: String) -> Bool {
         set_new_url(in_url: URL(fileURLWithPath: filename).absoluteString)
         send_NC(text: "Opened via drag and drop onto icon")
         return true
     }
-    
+
     // Quit when all windows closed
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         return true
     }
-    
+
     @IBAction func loadFile(_sender: NSMenuItem) {
         let panel = NSOpenPanel() // maybe make this its own function so we can use it elsewhere too
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
@@ -70,21 +70,21 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
     }
-    
+
     @IBAction func nextFile(_sender: NSMenuItem) {
         //print("Pressed next")
         NextPic(inc: 1)
     }
-    
+
     @IBAction func prevFile(_sender: NSMenuItem) {
         //print("Pressed prev")
         NextPic(inc: -1)
     }
-    
+
     @IBAction func openPrefs(_sender: NSMenuItem) {
         OpenPrefsWindow()
     }
-    
+
     @IBAction func copyFilePath(_sender: NSMenuItem) {
         // copy file path to image
         //print("copying path:", get_full_filepath())
@@ -92,19 +92,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         pb.clearContents()
         pb.setString(get_full_filepath(), forType: .string)
     }
-    
+
     @IBAction func copyAsFile(_sender: NSMenuItem) {
         // copy as image, used for pasting in finder or in documents etc
         let pb = NSPasteboard.general
         pb.clearContents()
         pb.writeObjects(NSArray(object: URL(string: get_URL_String())!) as! [NSPasteboardWriting]) // TODO understand this line better, i have no idea why it works
     }
-    
+
     @IBAction func deleteFile(_sender: NSMenuItem) {
         let fileManager = FileManager()
         do {
             try fileManager.removeItem(atPath: get_full_filepath())
-            
+
             if files_in_folder.count > 1 { // this wasnt the last image so just move to the next one
                 current_folder = "" // need to do this to refresh the folder check.. TODO maybe just remove the deleted file from the array instead?
                 NextPic(inc: 1)
@@ -117,13 +117,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             print("Error deleting file")
         }
     }
-    
+
     @IBAction func trashFile(_sender: NSMenuItem) {
         let fileManager = FileManager()
         do {
             try fileManager.trashItem(at: URL(string: get_URL_String())!, resultingItemURL: nil)
             //TODO catch the resultingItemURL to add Undo functionality
-            
+
             if files_in_folder.count > 1 { // this wasnt the last image so just move to the next one
                 current_folder = "" // need to do this to refresh the folder check.. TODO maybe just remove the deleted file from the array instead?
                 NextPic(inc: 1)
@@ -136,20 +136,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             print("Error trashing file")
         }
     }
-    
+
     @IBAction func toggleInfoBar(_sender: NSMenuItem) {
         ToggleInfoBar()
     }
-    
-    
+
+
     func applicationDidFinishLaunching(_ aNotification: Notification) {
         loadUserDefaults()
-        
+
         if UD.string(forKey: "Last Session Image") != "NULL" {
             // Make sure file exists
             let filePath = URL(string: UD.string(forKey: "Last Session Image")!)!.path
             let fileManager = FileManager.default
-            
+
             if fileManager.fileExists(atPath: filePath) { // It exists
                 set_new_url(in_url: UD.string(forKey: "Last Session Image")!)
                 send_NC(text: "Loaded last session")
@@ -157,17 +157,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 print("Image from last session was not found!")
             }
         }
-        
+
         if current_url == "" { // No image loaded, spawn a blank window with the "No image loaded" text
             spawn_window()
         }
-        
+
         if UD.bool(forKey: "Show Info Bar") == true {
             InfoBar_MenuItem?.state = .on
         } else {
             InfoBar_MenuItem?.state = .off
         }
-        
+
     }
 
     func applicationWillTerminate(_ aNotification: Notification) {
@@ -186,67 +186,71 @@ func spawn_window() {
         contentRect: NSRect(),
         styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
         backing: .buffered, defer: false)
-    
+
     //contentView.frame(minWidth: CGFloat(current_image_width), minHeight:CGFloat(current_image_height))
     window.title = DefaultWindowTitle
     window.center()
     window.setFrameAutosaveName("Main Window")
     window.contentView = NSHostingView(rootView: contentView)
     window.makeKeyAndOrderFront(true)
-        
+    window.titlebarAppearsTransparent = true
+    window.standardWindowButton(.closeButton)!.isHidden = true
+    window.standardWindowButton(.miniaturizeButton)!.isHidden = true
+    window.standardWindowButton(.zoomButton)!.isHidden = true
+
     window_spawned = true
-    
+
 }
 
 func set_new_url(in_url: String) { // This is the main thing. It gets called whenever we change picture.
     // TODO check if image is valid etc
-    
+
     if window_spawned == false {
         spawn_window()
     }
     //window.makeKeyAndOrderFront(true)
-    
+
     // Set all variables etc
     current_url = in_url
     check_image_folder(file_url_string: in_url)
     currentImageIndex = files_in_folder.firstIndex(of: current_url)!
     totalFilesInFolder = files_in_folder.count
-    
+
     // Get image resolution, https://stackoverflow.com/a/13228091
     let img = NSImageRep(contentsOf: URL(string: current_url)!)
     current_image_width = Int( img!.pixelsWide )
     current_image_height = Int( img!.pixelsHigh )
-    
+
     // Set up the window title
     var WindowTitle = ""
-    
+
     if UD.bool(forKey: "Show Index In Title") == true { // First the index at the start...
         let TitlebarImageIndex = currentImageIndex + 1 // because 0/x looks weird
         WindowTitle = WindowTitle + "[" + String(TitlebarImageIndex) + "/" + String(totalFilesInFolder) + "] "
     }
-    
+
     if UD.bool(forKey: "Show Name In Title") == true {
         WindowTitle = WindowTitle + get_filename() // ...filename in the middle...
     }
-    
+
     if UD.bool(forKey: "Show Resolution In Title") == true { // And then the resolution at the end
         WindowTitle = WindowTitle + " (" + String(current_image_width) + "x" + String(current_image_height) + ")"
     }
-    
+
     if WindowTitle == "" {
         WindowTitle = DefaultWindowTitle
     }
-    
+
     window.title = WindowTitle
-    
+
     // Generate text for the infobar
     InfoBar_Name = get_filename()
     InfoBar_Format = String(current_image_width) + "x" + String(current_image_height) // TODO show color depth etc too
     let TitlebarImageIndex = currentImageIndex + 1 // because 0/x looks weird
     InfoBar_Misc = String(TitlebarImageIndex) + "/" + String(totalFilesInFolder)
     InfoBar_FileSize = get_human_size(bytes: get_file_size(urlString: current_url))
-    
-    
+
+
     // Enable menu items since we now should have a image loaded
     subMenu?.item(withTitle: "Next")?.isEnabled = true
     subMenu?.item(withTitle: "Previous")?.isEnabled = true
@@ -254,14 +258,14 @@ func set_new_url(in_url: String) { // This is the main thing. It gets called whe
     subMenu?.item(withTitle: "Copy Path to Image")?.isEnabled = true
     subMenu?.item(withTitle: "Delete")?.isEnabled = true // TODO enable this only if file exists
     subMenu?.item(withTitle: "Trash")?.isEnabled = true
-    
+
     // Update last session image
     if UD.bool(forKey: "Remember Last Session Image") == true {
         UD.setValue(current_url, forKey: "Last Session Image")
     } else {
         UD.setValue("NULL", forKey: "Last Session Image")
     }
- 
+
 }
 
 func get_URL_String() -> String { /* file://path/to/picture.jpg */
@@ -320,12 +324,12 @@ func get_folder() -> String { /* /path/to/ */
 func check_image_folder(file_url_string: String) {
     //print("Check image folder", file_url)
     let NSs = (file_url_string as NSString)
-    
+
     //let filename = file_url_string
     let folderpath = NSs.deletingLastPathComponent
     //print(folderpath)
-    
-    
+
+
     if current_folder != folderpath { // Check if same folder so we dont re-do it
         current_folder = folderpath
         files_in_folder = [String]()
@@ -338,22 +342,22 @@ func check_image_folder(file_url_string: String) {
                     files_in_folder.append(file.absoluteString)
                 }
             }
-            
+
             files_in_folder.sort() // TODO maybe add sorting options?
-            
+
             //print("Files to handle:", files_in_folder.count)
         } catch {
             print ("error numerating folder")
         }
-        
+
     }
-    
+
 }
 
 func NextPic(inc: Int) {
     //print("Current picture is", files_in_folder[curr!])
     var next = currentImageIndex + inc
-    
+
     if next >= totalFilesInFolder {
         // we've gone through all pictures in the folder... lets go to the first one!
         next = 0 // TODO show some fancy loop indication here
@@ -384,7 +388,7 @@ func reset_everything() {
 
     currentImageIndex = 0 // Which image in the array we are showing
     totalFilesInFolder = 0 // How many images in the folder that we can show
-    
+
     // Disable menu items again
     subMenu?.item(withTitle: "Next")?.isEnabled = false
     subMenu?.item(withTitle: "Previous")?.isEnabled = false
@@ -392,7 +396,7 @@ func reset_everything() {
     subMenu?.item(withTitle: "Copy Path to Image")?.isEnabled = false
     subMenu?.item(withTitle: "Delete")?.isEnabled = false
     subMenu?.item(withTitle: "Trash")?.isEnabled = false
-    
+
     // Tell window to refresh
     send_NC(text: "Reset")
 }
@@ -419,15 +423,15 @@ func loadUserDefaults() {
     if isKeyPresentInUserDefaults(key: "Show Index In Title") == false {
         UD.set(false, forKey: "Show Index In Title")
     }
-    
+
     if isKeyPresentInUserDefaults(key: "Show Name In Title") == false {
         UD.set(true, forKey: "Show Name In Title")
     }
-    
+
     if isKeyPresentInUserDefaults(key: "Show Resolution In Title") == false {
         UD.set(false, forKey: "Show Resolution In Title")
     }
-    
+
     if isKeyPresentInUserDefaults(key: "Show Info Bar") == false {
         UD.set(false, forKey: "Show Info Bar")
     }
@@ -450,7 +454,7 @@ func SettingsUpdated() {
 
 func ToggleInfoBar() {
     var local_InfoBarState = UD.bool(forKey: "Show Info Bar")
-    
+
     if local_InfoBarState == false {
         // Enabled infobar
         local_InfoBarState = true
@@ -459,7 +463,7 @@ func ToggleInfoBar() {
         local_InfoBarState = false
         InfoBar_MenuItem?.state = .off
     }
-    
+
     UD.set(local_InfoBarState, forKey: "Show Info Bar")
     send_NC(text: "info bar toggled")
 }
