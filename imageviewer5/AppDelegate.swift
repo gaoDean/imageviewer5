@@ -194,6 +194,7 @@ func spawn_window() {
     window.contentView = NSHostingView(rootView: contentView)
     window.makeKeyAndOrderFront(true)
     window.titlebarAppearsTransparent = true
+    window.backgroundColor = .init(white: 0, alpha: 0)
     window.standardWindowButton(.closeButton)!.isHidden = true
     window.standardWindowButton(.miniaturizeButton)!.isHidden = true
     window.standardWindowButton(.zoomButton)!.isHidden = true
