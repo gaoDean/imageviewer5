@@ -64,13 +64,13 @@
                                             </connections>
                                         </menuItem>
                                         <menuItem isSeparatorItem="YES" id="m54-Is-iLE"/>
-                                        <menuItem title="Next" enabled="NO" keyEquivalent="" id="Rcm-ac-uwh">
+                                        <menuItem title="Next" enabled="NO" keyEquivalent="l" id="Rcm-ac-uwh">
                                             <modifierMask key="keyEquivalentModifierMask"/>
                                             <connections>
                                                 <action selector="nextFileWith_sender:" target="Voe-Tx-rLC" id="xZn-G4-k28"/>
                                             </connections>
                                         </menuItem>
-                                        <menuItem title="Previous" enabled="NO" keyEquivalent="" id="sKU-vi-Kik">
+                                        <menuItem title="Previous" enabled="NO" keyEquivalent="h" id="sKU-vi-Kik">
                                             <modifierMask key="keyEquivalentModifierMask"/>
                                             <connections>
                                                 <action selector="prevFileWith_sender:" target="Voe-Tx-rLC" id="Gkl-WC-8it"/>
